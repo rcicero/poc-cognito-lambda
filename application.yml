@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Outputs:
+  WebInterface:
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/login
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  cognitopool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AliasAttributes:
+      - email
+      AdminCreateUserConfig:
+        UnusedAccountValidityDays: 1
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          RequireLowercase: false
+          RequireSymbols: false
+          RequireNumbers: false
+          MinimumLength: 6
+          RequireUppercase: false
+  cognitoclient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      GenerateSecret: false
+      ExplicitAuthFlows:
+      - ADMIN_NO_SRP_AUTH
+      UserPoolId:
+        Ref: cognitopool
+  cognitoauth:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: ''
+      MemorySize: 128
+      Environment:
+        Variables:
+          userpoolid:
+            Ref: cognitopool
+          clientid:
+            Ref: cognitoclient
+      Handler: lambda.lambda_handler
+      Timeout: 10
+      CodeUri:
+        Bucket: {Bucket}
+      Runtime: python3.6
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
